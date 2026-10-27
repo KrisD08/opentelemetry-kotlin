@@ -507,6 +507,39 @@ internal class SpanExportTest {
     }
 
     @Test
+    fun `test span attribute can be updated after the count limit is reached`() = runTest {
+        harness.config.spanLimits = {
+            attributeCountLimit = 1
+        }
+        val span = harness.tracer.startSpan("span")
+        span.setStringAttribute("key", "first")
+        span.setStringAttribute("other", "ignored")
+        span.setStringAttribute("key", "second")
+
+        assertEquals(
+            mapOf<String, Any>("key" to "second"),
+            (span as AttributeContainer).attributes
+        )
+        span.end()
+    }
+
+    @Test
+    fun `test span attribute values are truncated to the length limit`() = runTest {
+        harness.config.spanLimits = {
+            attributeValueLengthLimit = 3
+        }
+        val span = harness.tracer.startSpan("span")
+        span.setStringAttribute("key", "abcdef")
+        span.setStringListAttribute("list", listOf("abcdef", "xy"))
+
+        assertEquals(
+            mapOf<String, Any>("key" to "abc", "list" to listOf("abc", "xy")),
+            (span as AttributeContainer).attributes
+        )
+        span.end()
+    }
+
+    @Test
     fun `test log export with custom processor`() = runTest {
         var link: SpanContext? = null
         harness.config.spanProcessors.add(
